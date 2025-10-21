@@ -65,3 +65,7 @@ check_untyped_defs = true
 ignore_missing_imports = true
 install_types = true
 non_interactive = true
+
+[[tool.mypy.overrides]]
+module = "ChemunitedDrive.logos.resources_rc"
+ignore_errors = true
