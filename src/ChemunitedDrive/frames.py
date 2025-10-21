@@ -1,23 +1,18 @@
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
 from qframelesswindow import FramelessDialog
 from PyQt5.QtGui import QDesktopServices
-from PyQt5.QtCore import (
-    QUrl,
-    Qt
-)
+from PyQt5.QtCore import QUrl, Qt
 
 from qfluentwidgets import (
     GroupHeaderCardWidget,
     ScrollArea,
-    ComboBox,
     Dialog,
-    HyperlinkLabel,
     StrongBodyLabel,
     LineEdit,
     PrimaryPushButton,
     PushButton,
     FluentIcon,
-    TransparentToolButton
+    TransparentToolButton,
 )
 from functools import partial
 from pathlib import Path
@@ -132,7 +127,9 @@ class FileCard(GroupHeaderCardWidget):
 
         btn_open = TransparentToolButton(FluentIcon.PLAY)
         if hasattr(self._parent, "load_project_config_file"):
-            btn_open.clicked.connect(partial(self._parent.load_project_config_file, file))
+            btn_open.clicked.connect(
+                partial(self._parent.load_project_config_file, file)
+            )
         btn_open.setToolTip("Open Project Configuration File")
 
         btn_view = TransparentToolButton(FluentIcon.FOLDER)

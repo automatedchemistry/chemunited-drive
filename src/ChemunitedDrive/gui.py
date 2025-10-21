@@ -25,7 +25,6 @@ Dependencies:
 
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (
-    QFileDialog,
     QListWidgetItem,
 )
 from PyQt5.QtCore import QUrl, Qt, QTimer, pyqtSlot, QProcess
@@ -64,7 +63,7 @@ from .frames import (
     AutoDiscoverInterface,
     ConfigurationFileInterface,
     ProjectCardsInterface,
-    FileCard
+    FileCard,
 )
 
 # Python 3.11+: tomllib is built-in. For 3.10 or earlier: pip install tomli
@@ -128,6 +127,9 @@ class DriveGUI(MSFluentWindow):
         self.progressTimer = QTimer(self)
         self.progressTimer.timeout.connect(self.update_progress)
         self.progress_value = 0
+
+        self.dir_connectivity: str
+        self.configuration: dict
 
         # Add interfaces to navigation
         self._setup_navigation()
@@ -205,7 +207,9 @@ class DriveGUI(MSFluentWindow):
     def _setup_widgets(self):
         """Setup widgets in the window."""
         self.resize(880, 760)
-        self.setWindowTitle("ChemUnited-Drive - API Devices Drive Communication through Flowchem")
+        self.setWindowTitle(
+            "ChemUnited-Drive - API Devices Drive Communication through Flowchem"
+        )
         self.setWindowIcon(QIcon(":/ChemunitedDrive/flowchem_logo.svg"))
         self.titleBar.raise_()
 
@@ -234,8 +238,8 @@ class DriveGUI(MSFluentWindow):
 
     def _initialize_attributes(self):
         """Initialize internal attributes."""
-        self.dir_connectivity: None | str = None
-        self.configuration: dict = {}
+        self.dir_connectivity = ""
+        self.configuration = {}
         self.temporary = os.path.join(TEMPORARY_FILES_FOLDER, "__temporary_cfg.toml")
         self.urlFile = os.path.join(TEMPORARY_FILES_FOLDER, "__temporaryURL.toml")
         self.devices_flowchem: list[str] = []
@@ -332,13 +336,11 @@ class DriveGUI(MSFluentWindow):
             return
 
         try:
-            file_path = self.dir_connectivity
-
-            with open(file_path, "w") as file:
-                toml.dump(self.configuration, self.dir_connectivity)
-
+            with open(self.dir_connectivity, "w") as f:
+                toml.dump(self.configuration, f)
             self.createSuccessInfoBar(
-                title="File Saved", content=f"Configuration saved to: {file_path}"
+                title="File Saved",
+                content=f"Configuration saved to: {self.dir_connectivity}",
             )
 
         except Exception as e:
