@@ -1,3 +1,5 @@
+![ChemUnited-Drive](https://github.com/automatedchemistry/chemunited-drive/blob/main/docs/chemunited_drive.svg)
+
 # ChemUnited-Drive Application
 
 This application provides a graphical interface to manage, configure, and run FlowChem projects.
@@ -50,6 +52,8 @@ The main window provides four tabs for navigation:
 
 ### 2. Projects View
 
+![ChemUnited-Drive](https://github.com/automatedchemistry/chemunited-drive/blob/main/docs/projects.png)
+
 The Project tab lists all recent FlowChem projects stored in your workspace.
 
 Each card offers:
@@ -59,6 +63,8 @@ Each card offers:
 * 📂 Open Folder – Open the project directory in the system file browser.
 
 ### 3. Configuration View
+
+![ChemUnited-Drive](https://github.com/automatedchemistry/chemunited-drive/blob/main/docs/run01.png)
 
 When a project is loaded, its configuration file (__configuration_file.toml) is displayed and can be edited.
 
@@ -72,15 +78,17 @@ A progress bar shows the initialization status, and the application provides liv
 
 ### 4. Run and Monitor FlowChem
 
+![ChemUnited-Drive](https://github.com/automatedchemistry/chemunited-drive/blob/main/docs/run02.png)
+
 When you press Run, the GUI performs the following sequence:
 
-Saves any edits to a temporary TOML file.
+* Saves any edits to a temporary TOML file.
 
-Asks if you want to terminate existing FlowChem processes.
+* Asks if you want to terminate existing FlowChem processes.
 
-Launches FlowChem as a subprocess (flowchem.__main__.py) via QProcess.
+* Launches FlowChem as a subprocess (flowchem.__main__.py) via QProcess.
 
-Displays logs and connection information.
+* Displays logs and connection information.
 
 Once the server starts (http://127.0.0.1:8000), a direct link appears in the GUI.
 
@@ -137,6 +145,8 @@ flowchart TD
     E --> F[Update GUI and reset progress bar]
 
 ## 🧰 Device Discovery
+
+![ChemUnited-Drive](https://github.com/automatedchemistry/chemunited-drive/blob/main/docs/devices.png)
 
 The Discover tab uses built-in FlowChem finders to detect connected devices:
 
@@ -212,13 +222,13 @@ Open the Issues tab in the GitHub repository.
 
 Provide:
 
-A clear title and short description.
+* A clear title and short description.
 
-Steps to reproduce the issue.
+* Steps to reproduce the issue.
 
-Expected vs. observed behavior.
+* Expected vs. observed behavior.
 
-(Optional) Screenshots or error logs.
+* (Optional) Screenshots or error logs.
 
 This helps maintainers reproduce and fix the problem quickly.
 
