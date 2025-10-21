@@ -1,0 +1,11 @@
+<RCC>
+    <qresource prefix="/ChemunitedDrive">
+        <!-- pyrcc5 src/ChemunitedDrive/logos/resources_rc.qrc -o src/ChemunitedDrive/logos/resources_rc.py-->
+
+        <!-- Images -->
+        <file>chemunited.svg</file>
+        <file>flowchem.svg</file>
+        <file>flowchem_logo.svg</file>
+
+    </qresource>
+</RCC>

@@ -1,0 +1,67 @@
+[build-system]
+requires = ["setuptools>64", "wheel", "pip>=22"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chemunited-drive"
+version = "0.0.1"
+description = "Package to created a second layer to flowchem."
+readme = "README.md"
+requires-python = ">=3.10"
+license =  { text = "MIT" }
+keywords = ["control", "automation", "process"]
+authors = [
+    { name = "Samuel Vitor Saraiva", email = "samuel.saraiva@mpikg.mpg.de" }
+]
+maintainers = [
+  { name = "Samuel Vitor Saraiva", email = "samuel.saraiva@mpikg.mpg.de" }
+]
+classifiers = [
+    "License :: OSI Approved :: MIT License"
+]
+dependencies = [
+    "PyQt-Fluent-Widgets[full]",
+    "flowchem",
+    "psutil",
+    "jedi",
+    "appdirs",
+    "appdirs",
+    "toml",
+    "black"
+]
+
+[project.optional-dependencies]
+all = ["chemunited[dev,test,phidget]"]
+ci = ["chemunited[dev,test]"]
+dev = [
+    "mypy",
+    "pre-commit",
+    "pytest>=8.2",
+    "ruff>=0.11.11",
+    "types-requests",
+    "types-toml",
+]
+test = [
+    "pytest>=8.2",
+    "pytest-qt>=4.2",
+    "pytest-xprocess",
+    "xvfbwrapper"
+]
+
+[project.urls]
+homepage = "https://github.com/cambiegroup/chemunited-drive"
+repository = "https://github.com/cambiegroup/chemunited-drive"
+
+[project.scripts]
+chemunited-drive = "ChemunitedDrive.__main__:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages.find.where = ["src"]
+
+[tool.mypy]
+python_version = "3.11"
+check_untyped_defs = true
+ignore_missing_imports = true
+install_types = true
+non_interactive = true
