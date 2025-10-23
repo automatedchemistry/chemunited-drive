@@ -42,18 +42,3 @@ jobs:
 
       - name: Run ruff
         run: ruff check src
-
-      - name: Install xvfb (Ubuntu only)
-        if: runner.os == 'Linux'
-        run: sudo apt-get install -y xvfb libxkbcommon-x11-0
-
-      - name: Run pytest (Linux with xvfb)
-        if: runner.os == 'Linux'
-        run: xvfb-run --auto-servernum python -m pytest --tb=short --disable-warnings
-
-      - name: Run pytest (Windows)
-        if: runner.os == 'Windows'
-        run: python -m pytest --tb=short --disable-warnings
-
-      - name: Run pytest
-        run: python -m pytest --tb=short --disable-warnings

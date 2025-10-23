@@ -1,8 +1,7 @@
-from PyQt5.QtCore import QProcess, QObject, pyqtSignal, QTimer
+from PyQt5.QtCore import QProcess, QObject, pyqtSignal
 from PyQt5.QtWidgets import QTextBrowser
 from datetime import datetime
 import psutil
-import signal
 import sys
 
 
@@ -87,72 +86,35 @@ class FlowchemThread(QObject):
     def stop_process(self):
         """
         Gracefully stop the running FlowChem process.
-
-        - On Unix: sends SIGINT.
-        - On Windows: sends CTRL_BREAK_EVENT (requires console group).
-        - If the process does not stop within 3 seconds, attempts termination and then kill.
-        - Uses QTimer.singleShot to avoid blocking the GUI thread.
-        Emits processStopped when finished.
         """
-
-        if self.process.state() != QProcess.Running:  # type: ignore[attr-defined]
+        if self.process.state() != QProcess.Running:  # type:ignore[attr-defined]
             self.__export_text("Process was not running.")
             self.processStopped.emit()
             return
 
         self.warning.emit("Attempting to stop the process gracefully...")
 
-        pid = self.process.processId()
-        if not pid:
-            self.warning.emit("Could not retrieve process ID.")
-            self.processStopped.emit()
-            return
-
         try:
-            process = psutil.Process(pid)
+            # Try to terminate the process using QProcess.terminate()
+            self.process.terminate()
 
-            # Send appropriate interrupt signal
-            if sys.platform.startswith("win"):
-                self.warning.emit("Sending CTRL_BREAK_EVENT (Windows).")
-                process.send_signal(
-                    signal.CTRL_BREAK_EVENT
-                )  # more reliable than CTRL_C_EVENT
-            else:
-                self.__export_text("Sending SIGINT (Unix).")
-                process.send_signal(signal.SIGINT)
-
-            # Use QTimer to avoid blocking the GUI
-            def check_if_finished():
-                if self.process.state() == QProcess.NotRunning:  # type: ignore[attr-defined]
-                    self.success.emit("Process terminated gracefully.")
-                    self.processStopped.emit()
+            # Wait for the process to finish for up to 3 seconds
+            if not self.process.waitForFinished(3000):
+                # If it hasn't finished, force kill
+                self.warning.emit("Graceful stop failed, forcing termination.")
+                self.process.kill()
+                if not self.process.waitForFinished(1000):  # Wait a bit more after kill
+                    self.error.emit("Process could not be terminated.")
                 else:
-                    self.warning.emit("Graceful stop failed, forcing termination.")
-                    try:
-                        process.terminate()
-                        process.wait(3)  # give a few seconds
-                        if process.is_running():
-                            self.warning.emit("Force killing the process.")
-                            process.kill()
-                    except Exception as e:
-                        self.error.emit(
-                            "Error during forced termination - details in log"
-                        )
-                        self.__export_text(f"Error during forced termination: {e}")
-                    self.processStopped.emit()
-
-            # Run check in 3 seconds, non-blocking
-            # QObject::~QObject: Timers cannot be stopped from another thread
-            # This error appear only the gui is launch through the console
-            # A deep investigation should be done regarding it!
-            # Each QObject has a built-in timer. Qt might use it for internal purposes
-            # The part before ": Timers" shows the function which produced this message.
-            # In your case, it is a QObject destructor. This suggests that an object is getting
-            # deleted in the wrong thread.
-            QTimer.singleShot(3000, check_if_finished)
+                    self.success.emit("Process force terminated.")
+            else:
+                self.success.emit("Process terminated gracefully.")
 
         except Exception as e:
-            self.__export_text(f"Error while trying to stop process: {e}")
+            self.error.emit(f"Error during process termination: {e}")
+            self.__export_text(f"Termination error: {e}")
+        finally:
+            self.processStopped.emit()
 
     def terminate_existing_process(self):
         """
