@@ -48,6 +48,9 @@ class FlowchemThread(QObject):
         self.process.finished.connect(self.__on_process_finished)
         self.process.errorOccurred.connect(self.__on_process_error)
 
+    def is_running(self):
+        return self.process.state() == QProcess.Running  # type: ignore[attr-defined]
+
     def start_process(self, config_file: str = "fake.toml"):
         """
         Start a new FlowChem process with the given configuration file.
@@ -58,7 +61,7 @@ class FlowchemThread(QObject):
         Returns:
             bool: True if the process started (or is already running), False otherwise.
         """
-        if self.process.state() != QProcess.Running:  # type: ignore[attr-defined]
+        if not self.is_running():
             try:
                 import flowchem
 

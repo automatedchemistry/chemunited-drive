@@ -25,7 +25,7 @@ Dependencies:
 
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (
-    QListWidgetItem,
+    QListWidgetItem, QWidget, QHBoxLayout,
 )
 from PyQt5.QtCore import QUrl, Qt, QTimer, pyqtSlot, QProcess
 
@@ -49,6 +49,7 @@ from qfluentwidgets import (
     FlyoutAnimationType,
     InfoBarIcon,
     PrimaryPushButton,
+    TransparentToolButton
 )
 
 from flowchem.utils import device_finder
@@ -108,6 +109,9 @@ class DriveGUI(MSFluentWindow):
 
         # Add Configuration Interface widgets
         self.labelConfFile = StrongBodyLabel("-")
+        self.update_file_btn = TransparentToolButton(FluentIcon.UPDATE, self)
+        self.update_file_btn.clicked.connect(self.update_file)
+        self.update_file_btn.setToolTip("Update configuration file")
         self.labelMessage = StrongBodyLabel("-")
         self.link = HyperlinkLabel()
         self.TextBrowserFile = TextBrowser(self)
@@ -217,7 +221,13 @@ class DriveGUI(MSFluentWindow):
         self.TextBrowser = TextBrowser(self)
         self.LoggingInterface.vBoxLayout.addWidget(self.TextBrowser)
 
-        self.ConfigurationFileInterface.vBoxLayout.addWidget(self.labelConfFile)
+        # Configuration file with update button
+        widget = QWidget()
+        layout = QHBoxLayout(widget)
+        layout.addWidget(self.update_file_btn)
+        layout.addWidget(self.labelConfFile)
+
+        self.ConfigurationFileInterface.vBoxLayout.addWidget(widget)
         self.ConfigurationFileInterface.vBoxLayout.addWidget(self.labelMessage)
         self.ConfigurationFileInterface.vBoxLayout.addWidget(self.link)
         self.ConfigurationFileInterface.vBoxLayout.addWidget(self.TextBrowserFile)
@@ -241,7 +251,6 @@ class DriveGUI(MSFluentWindow):
         self.dir_connectivity = ""
         self.configuration = {}
         self.temporary = os.path.join(TEMPORARY_FILES_FOLDER, "__temporary_cfg.toml")
-        self.urlFile = os.path.join(TEMPORARY_FILES_FOLDER, "__temporaryURL.toml")
         self.devices_flowchem: list[str] = []
         self._itemClickedDevicesList: str = ""
         self.component_finder: Optional[Callable] = None
@@ -291,6 +300,18 @@ class DriveGUI(MSFluentWindow):
         self.labelConfFile.setText(self.dir_connectivity)
         formatted_text = toml.dumps(self.configuration)
         self.TextBrowserFile.setText(formatted_text)
+
+    def update_file(self):
+        if self.dir_connectivity:
+            data = toml.load(self.dir_connectivity)
+            formatted_text = toml.dumps(data)
+            if formatted_text != self.TextBrowserFile.toPlainText():
+                self.configuration = data
+                self.TextBrowserFile.setText(formatted_text)
+                if self.flowchemThread.is_running():
+                    msg = "Running with not update file - " + self.labelMessage.text()
+                    self.labelMessage.setText(msg)
+                self.__success("The configuration file was successfully updated.")
 
     def save(self):
         """
@@ -673,6 +694,4 @@ class DriveGUI(MSFluentWindow):
             # If not running → safe to close immediately
             if os.path.isfile(self.temporary):
                 os.remove(self.temporary)
-            if os.path.isfile(self.urlFile):
-                os.remove(self.urlFile)
             event.accept()
