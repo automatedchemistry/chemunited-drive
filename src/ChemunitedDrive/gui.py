@@ -25,7 +25,9 @@ Dependencies:
 
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (
-    QListWidgetItem, QWidget, QHBoxLayout,
+    QListWidgetItem,
+    QWidget,
+    QHBoxLayout,
 )
 from PyQt5.QtCore import QUrl, Qt, QTimer, pyqtSlot, QProcess
 
@@ -49,7 +51,7 @@ from qfluentwidgets import (
     FlyoutAnimationType,
     InfoBarIcon,
     PrimaryPushButton,
-    TransparentToolButton
+    TransparentToolButton,
 )
 
 from flowchem.utils import device_finder
