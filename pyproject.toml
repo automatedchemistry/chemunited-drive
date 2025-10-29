@@ -20,7 +20,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License"
 ]
 dependencies = [
-    "PyQt-Fluent-Widgets[full]",
+    "PyQt-Fluent-Widgets",
     "flowchem",
     "psutil",
     "jedi",
