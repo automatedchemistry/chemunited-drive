@@ -121,29 +121,6 @@ or, if installed as a package:
 chemunited-drive
 ```
 
-## 🧠 How It Works Internally
-
-Process Flow
-
-flowchart TD
-    A[User loads config file] --> B[Validate TOML]
-    B -->|Valid| C[Save temporary config]
-    C --> D[Terminate existing FlowChem processes?]
-    D --> E[Launch FlowChem process via QProcess]
-    E --> F[Monitor stdout/stderr for logs]
-    F --> G[Detect "Uvicorn running..." message]
-    G --> H[Emit processStart signal]
-    H --> I[Show clickable server link in GUI]
-
-Stopping the Server
-
-flowchart TD
-    A[User clicks Stop] --> B[Send SIGINT or CTRL_BREAK_EVENT]
-    B --> C[Wait 3s for graceful termination]
-    C -->|Still running| D[Force terminate or kill process]
-    D --> E[Emit processStopped signal]
-    E --> F[Update GUI and reset progress bar]
-
 ## 🧰 Device Discovery
 
 ![ChemUnited-Drive](https://github.com/automatedchemistry/chemunited-drive/blob/main/docs/devices.png)
