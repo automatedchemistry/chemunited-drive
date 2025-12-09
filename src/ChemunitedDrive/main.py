@@ -73,9 +73,17 @@ class GUI(DriveGUI):
                 msg += f"Skipping {serial_port} (cannot be opened: already in use?)\n"
                 continue
 
-            if self.component_finder and (config := self.component_finder(serial_port)):
-                configuration = "".join(config)
-                break
+            if self.component_finder:
+                try:
+                    if config := self.component_finder(serial_port):
+                        configuration = "".join(config)
+                        break
+                except Exception as e:
+                    self.errorInfoBar(
+                        title=f"Error in serial port {serial_port}",
+                        content=repr(e)
+                    )
+                    break
 
             msg += f"No known device found on {serial_port}\n"
 

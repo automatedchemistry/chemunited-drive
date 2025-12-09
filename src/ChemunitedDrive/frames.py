@@ -103,7 +103,7 @@ class MessageBoxRequestIP(FramelessDialog):
 
         # Connect buttons
         self.cancelBtn.clicked.connect(self.reject)
-        self.proceedBtn.clicked.connect(self.accepted)
+        self.proceedBtn.clicked.connect(self.accept)
 
 
 class FileCard(GroupHeaderCardWidget):
