@@ -74,6 +74,7 @@ class GUI(DriveGUI):
                 continue
 
             if self.component_finder:
+                
                 try:
                     if config := self.component_finder(serial_port):
                         configuration = "".join(config)
