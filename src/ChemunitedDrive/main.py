@@ -74,15 +74,18 @@ class GUI(DriveGUI):
                 continue
 
             if self.component_finder:
-                
                 try:
                     if config := self.component_finder(serial_port):
                         configuration = "".join(config)
                         break
+                except BaseException as e:
+                    self.errorInfoBar(
+                        title=f"Error in serial port {serial_port}", content=repr(e)
+                    )
+                    break
                 except Exception as e:
                     self.errorInfoBar(
-                        title=f"Error in serial port {serial_port}",
-                        content=repr(e)
+                        title=f"Error in serial port {serial_port}", content=repr(e)
                     )
                     break
 
