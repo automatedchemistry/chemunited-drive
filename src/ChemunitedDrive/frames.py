@@ -1,7 +1,8 @@
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget
 from qframelesswindow import FramelessDialog
 from PyQt5.QtGui import QDesktopServices
 from PyQt5.QtCore import QUrl, Qt
+from typing import Any
 
 from qfluentwidgets import (
     GroupHeaderCardWidget,
@@ -13,6 +14,7 @@ from qfluentwidgets import (
     PushButton,
     FluentIcon,
     TransparentToolButton,
+    SegmentedWidget
 )
 from functools import partial
 from pathlib import Path
@@ -104,6 +106,34 @@ class MessageBoxRequestIP(FramelessDialog):
         # Connect buttons
         self.cancelBtn.clicked.connect(self.reject)
         self.proceedBtn.clicked.connect(self.accept)
+
+
+class SegmentWindow(QWidget):
+
+    def __init__(self, parent):
+        super().__init__(parent)
+
+        self.pivot = SegmentedWidget(self)
+        self.stackedWidget = QStackedWidget(self)
+        self.vBoxLayout = QVBoxLayout(self)
+
+        self.vBoxLayout.addWidget(self.pivot)
+        self.vBoxLayout.addWidget(self.stackedWidget)
+        self.vBoxLayout.setContentsMargins(10, 10, 10, 10)
+
+        self.pivot.currentItemChanged.connect(
+            lambda k: self.switchTo(self.findChild(QWidget, k))
+        )
+
+    def addSubInterface(
+        self, widget: QWidget, objectName: str, text, icon: str, onClick: Any = None
+    ):
+        widget.setObjectName(objectName)
+        self.stackedWidget.addWidget(widget)
+        self.pivot.addItem(routeKey=objectName, text=text, icon=icon, onClick=onClick)
+
+    def switchTo(self, widget):
+        self.stackedWidget.setCurrentWidget(widget)
 
 
 class FileCard(GroupHeaderCardWidget):
@@ -200,3 +230,30 @@ class ProjectCardsInterface(BaseInterface):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("ProjectCardsInterface")
+
+
+
+
+
+
+
+
+if __name__ == "__main__":
+    from PyQt5.QtWidgets import QApplication
+    from PyQt5.QtCore import Qt
+    import sys
+
+    # Set high DPI settings for better display scaling
+    QApplication.setHighDpiScaleFactorRoundingPolicy(
+        Qt.HighDpiScaleFactorRoundingPolicy.PassThrough  # type: ignore[attr-defined]
+    )
+    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)  # type: ignore[attr-defined]
+    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)  # type: ignore[attr-defined]
+
+    app = QApplication(sys.argv)
+
+    gui = SegmentWindow(None)
+    gui.addSubInterface(widget=QWidget(), objectName="A", text="ko", icon=FluentIcon.PLAY)
+    gui.addSubInterface(widget=QWidget(), objectName="B", text="fr", icon=FluentIcon.FOLDER)
+    gui.show()
+    app.exec_()

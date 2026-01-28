@@ -66,6 +66,7 @@ from .frames import (
     AutoDiscoverInterface,
     ConfigurationFileInterface,
     ProjectCardsInterface,
+    SegmentWindow,
     FileCard,
 )
 
@@ -116,6 +117,7 @@ class DriveGUI(MSFluentWindow):
         self.update_file_btn.setToolTip("Update configuration file")
         self.labelMessage = StrongBodyLabel("-")
         self.link = HyperlinkLabel()
+        self.confi_seg_window = SegmentWindow(parent=self)
         self.TextBrowserFile = TextBrowser(self)
         self.progressBar = ProgressBar(self)
         self.buttonRun = PushButton("Run")
@@ -228,11 +230,22 @@ class DriveGUI(MSFluentWindow):
         layout = QHBoxLayout(widget)
         layout.addWidget(self.update_file_btn)
         layout.addWidget(self.labelConfFile)
-
+        self.confi_seg_window.addSubInterface(
+            widget=self.TextBrowserFile,
+            text="Config. File",
+            objectName="TextBrowserFile",
+            icon=FluentIcon.DEVELOPER_TOOLS
+        )
+        self.confi_seg_window.addSubInterface(
+            widget=QWidget(),
+            text="Device added",
+            objectName="device_list",
+            icon=FluentIcon.IOT
+        )
         self.ConfigurationFileInterface.vBoxLayout.addWidget(widget)
         self.ConfigurationFileInterface.vBoxLayout.addWidget(self.labelMessage)
         self.ConfigurationFileInterface.vBoxLayout.addWidget(self.link)
-        self.ConfigurationFileInterface.vBoxLayout.addWidget(self.TextBrowserFile)
+        self.ConfigurationFileInterface.vBoxLayout.addWidget(self.confi_seg_window)
         self.ConfigurationFileInterface.vBoxLayout.addWidget(self.progressBar)
         self.ConfigurationFileInterface.vBoxLayout.addWidget(self.buttonRun)
         self.ConfigurationFileInterface.vBoxLayout.addWidget(self.buttonClose)
