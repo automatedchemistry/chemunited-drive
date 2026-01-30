@@ -51,21 +51,25 @@ class FlowchemThread(QObject):
     def is_running(self):
         return self.process.state() == QProcess.Running  # type: ignore[attr-defined]
 
-    def start_process(self, config_file: str = "fake.toml"):
+    def start_process(self, config_file: str = "fake.toml", virtual_mode: bool = False):
         """
         Start a new FlowChem process with the given configuration file.
 
         Args:
             config_file (str): Path to a FlowChem TOML configuration file. Defaults to "fake.toml".
+            virtual_mode (bool): Virtual Mode.
 
         Returns:
             bool: True if the process started (or is already running), False otherwise.
         """
         if not self.is_running():
             try:
-                import flowchem
+                if virtual_mode:
+                    import flowchem_virtual as server_launch
+                else:
+                    import flowchem as server_launch
 
-                main = flowchem.__file__.replace("__init__.py", "__main__.py")
+                main = server_launch.__file__.replace("__init__.py", "__main__.py")
 
                 # Start the process
                 self.process.start(sys.executable, [str(main), str(config_file)])
@@ -161,6 +165,8 @@ class FlowchemThread(QObject):
         self.__export_text(f"Process report: {infor}")
         if "Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)" in infor:
             self.processStart.emit()
+        if "AssertionError" in infor:
+            self.error.emit(f"AssertionError: {infor.split('AssertionError')[-1]}")
 
     def __on_state_changed(self, state):
         """Log and emit when the process state changes (NotRunning, Starting, Running)."""
@@ -177,6 +183,8 @@ class FlowchemThread(QObject):
             self.__export_text(f"Process finished with exit code {exitCode}")
         else:
             self.__export_text(f"Process crashed with exit code {exitCode}")
+
+        self.processStopped.emit()
 
     def __on_process_error(self, error):
         """Handle QProcess errors (e.g., failed to start, crashed)."""

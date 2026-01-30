@@ -14,7 +14,7 @@ from qfluentwidgets import (
     PushButton,
     FluentIcon,
     TransparentToolButton,
-    SegmentedWidget
+    SegmentedWidget,
 )
 from functools import partial
 from pathlib import Path
@@ -232,10 +232,12 @@ class ProjectCardsInterface(BaseInterface):
         self.setObjectName("ProjectCardsInterface")
 
 
+class SettingsInterface(BaseInterface):
+    """Widget for access settings."""
 
-
-
-
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName("SettingsInterface")
 
 
 if __name__ == "__main__":
@@ -253,7 +255,11 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
 
     gui = SegmentWindow(None)
-    gui.addSubInterface(widget=QWidget(), objectName="A", text="ko", icon=FluentIcon.PLAY)
-    gui.addSubInterface(widget=QWidget(), objectName="B", text="fr", icon=FluentIcon.FOLDER)
+    gui.addSubInterface(
+        widget=QWidget(), objectName="A", text="ko", icon=FluentIcon.PLAY
+    )
+    gui.addSubInterface(
+        widget=QWidget(), objectName="B", text="fr", icon=FluentIcon.FOLDER
+    )
     gui.show()
     app.exec_()

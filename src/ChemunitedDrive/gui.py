@@ -52,6 +52,7 @@ from qfluentwidgets import (
     InfoBarIcon,
     PrimaryPushButton,
     TransparentToolButton,
+    TransparentTogglePushButton,
 )
 
 from flowchem.utils import device_finder
@@ -66,6 +67,7 @@ from .frames import (
     AutoDiscoverInterface,
     ConfigurationFileInterface,
     ProjectCardsInterface,
+    SettingsInterface,
     SegmentWindow,
     FileCard,
 )
@@ -102,11 +104,15 @@ class DriveGUI(MSFluentWindow):
     - Start/stop Flowchem processes.
     """
 
+    server_name = "Flowchem"
+
     def __init__(self, parent=None):
         super().__init__(parent)
 
         # use dark theme mode
         setTheme(Theme.LIGHT)  # Use light theme
+
+        self.VirtualMode: bool = False
 
         self.link = HyperlinkLabel(parent=self)
 
@@ -125,11 +131,19 @@ class DriveGUI(MSFluentWindow):
         self.buttonClose = PrimaryPushButton("Stop")
         self.buttonClose.clicked.connect(self.stop)
         self.FileCard = FileCard(self)
+        self.button_virtual_mode = TransparentTogglePushButton(
+            FluentIcon.CONNECT, "Virtual Mode", self
+        )
+        self.button_virtual_mode.clicked.connect(self.onClickVirtialMode)
+        self.button_virtual_mode.setToolTip(
+            "Set Virtual Mode to launch the server with virtual devices - Test mode"
+        )
 
         self.LoggingInterface = LoggingInterface(self)
         self.AutoDiscoverInterface = AutoDiscoverInterface(self)
         self.ConfigurationFileInterface = ConfigurationFileInterface(self)
         self.ProjectCardsInterface = ProjectCardsInterface(self)
+        self.SettingsInterface = SettingsInterface(self)
 
         self.flowchemThread = FlowchemThread()
         self.progressTimer = QTimer(self)
@@ -212,6 +226,14 @@ class DriveGUI(MSFluentWindow):
             isTransparent=True,
         )
 
+        self.addSubInterface(
+            self.SettingsInterface,
+            FluentIcon.SETTING,
+            "Settings",
+            FluentIcon.SETTING,
+            isTransparent=True,
+        )
+
     def _setup_widgets(self):
         """Setup widgets in the window."""
         self.resize(880, 760)
@@ -234,13 +256,13 @@ class DriveGUI(MSFluentWindow):
             widget=self.TextBrowserFile,
             text="Config. File",
             objectName="TextBrowserFile",
-            icon=FluentIcon.DEVELOPER_TOOLS
+            icon=FluentIcon.DEVELOPER_TOOLS,
         )
         self.confi_seg_window.addSubInterface(
             widget=QWidget(),
             text="Device added",
             objectName="device_list",
-            icon=FluentIcon.IOT
+            icon=FluentIcon.IOT,
         )
         self.ConfigurationFileInterface.vBoxLayout.addWidget(widget)
         self.ConfigurationFileInterface.vBoxLayout.addWidget(self.labelMessage)
@@ -260,6 +282,9 @@ class DriveGUI(MSFluentWindow):
         self._fillUp_list()
 
         self._fill_project_cards()
+
+        # Settings
+        self.SettingsInterface.vBoxLayout.insertWidget(0, self.button_virtual_mode)
 
     def _initialize_attributes(self):
         """Initialize internal attributes."""
@@ -297,7 +322,7 @@ class DriveGUI(MSFluentWindow):
             url = response["components"][first_key]
             dataURL = url.split("8000")[0] + "8000/"
 
-        self.labelMessage.setText("Flowchem server is running successfully")
+        self.labelMessage.setText(f"{self.server_name} server is running successfully")
         self.link.setText(f"Open server - {dataURL}")
         self.link.setUrl(dataURL)
         self._running = True
@@ -394,8 +419,6 @@ class DriveGUI(MSFluentWindow):
         - Start a new FlowChem process with the saved configuration.
         - Update device cards with the new device list.
         """
-        self.progressBar.setCustomBarColor(light="#90CAF9", dark="#90CAF9")
-        self.progressTimer.start(100)
 
         # Get edited content from the text editor
         edited_content = self.TextBrowserFile.toPlainText()
@@ -413,17 +436,24 @@ class DriveGUI(MSFluentWindow):
             return
 
         # Ask user whether to terminate running FlowChem processes
-        content = """
-            Do you want to check for any running FlowChem processes on this machine
-            and terminate them before starting a new one?
+        content = f"""
+        Do you want to check for any running <b>{self.server_name}</b> processes on this machine
+        and terminate them before starting a new one?
         """
+
         w = MessageBoxCustom("", content, self)
 
         if w.exec():
             self.flowchemThread.terminate_existing_process()
 
+        self.progressBar.setCustomBarColor(light="#90CAF9", dark="#90CAF9")
+        self.progress_value = 0
+        self.progressTimer.start(100)
+
         # Start the new FlowChem process
-        self.flowchemThread.start_process(config_file=self.temporary)
+        self.flowchemThread.start_process(
+            config_file=self.temporary, virtual_mode=self.VirtualMode
+        )
 
     def stop(self):
         content = """
@@ -436,21 +466,6 @@ class DriveGUI(MSFluentWindow):
         if w.exec():
             if self.flowchemThread.process.state() == QProcess.Running:  # type: ignore[attr-defined]
                 self.flowchemThread.stop_process()
-
-    @pyqtSlot()
-    def __finalize_process(self):
-        self.createSuccessInfoBar(
-            title="Server Close", content="Server was close successfully"
-        )
-        self.link.setUrl("")
-        self.link.setText("")
-        self.labelMessage.setText("No server running")
-        self._running = False
-        self.buttonRun.setHidden(False)
-        self.buttonClose.setHidden(True)
-        self.progress_value = 0
-        self.progressBar.setValue(self.progress_value)
-        self.progressBar.setCustomBarColor(light="#90CAF9", dark="#90CAF9")
 
     def _fillUp_list(self):
         """
@@ -565,7 +580,7 @@ class DriveGUI(MSFluentWindow):
 
         Flyout.make(view, self.AutoDiscoverInterface, self, FlyoutAnimationType.FADE_IN)
 
-    def onClickedFinder(self):
+    def onClickFinder(self):
         if self._running:
             self.warningInfoBar(
                 title="Process is running",
@@ -573,6 +588,22 @@ class DriveGUI(MSFluentWindow):
             )
             return False
         return True
+
+    def onClickVirtialMode(self, value: bool):
+        self.VirtualMode = value
+        self.AutoDiscoverInterface.setEnabled(not value)
+        self.server_name = "Vitual-FlowChem" if value else "FlowChem"
+        if value:
+            self.setWindowTitle(
+                "ChemUnited-Drive - API  <b>Virtual Devices </b> through  <b>Virtual-Flowchem </b>"
+            )
+        else:
+            self.setWindowTitle(
+                "ChemUnited-Drive - API Devices Drive Communication through Flowchem"
+            )
+        self.navigationInterface.items["ConfigurationFileInterface"].setText(
+            "Virtual\nFlowchem" if value else "Flowchem"
+        )
 
     def handleErros(self, error, title: str = ""):
         """
@@ -673,17 +704,35 @@ class DriveGUI(MSFluentWindow):
         if self.progress_value >= count:
             self.progressTimer.stop()
 
+    @pyqtSlot()
+    def __finalize_process(self):
+        self.createSuccessInfoBar(
+            title="Server Close", content="Server was close successfully"
+        )
+        self.link.setUrl("")
+        self.link.setText("")
+        self.labelMessage.setText("No server running")
+        self._running = False
+        self.buttonRun.setHidden(False)
+        self.buttonClose.setHidden(True)
+        self.progressTimer.stop()
+        self.progress_value = 0
+        self.progressBar.setValue(self.progress_value)
+        self.progressBar.setCustomBarColor(light="#90CAF9", dark="#90CAF9")
+
     @pyqtSlot(str)
     def __success(self, message):
-        self.createSuccessInfoBar(title="Flowchem Information", content=message)
+        self.createSuccessInfoBar(
+            title=f"{self.server_name} Information", content=message
+        )
 
     @pyqtSlot(str)
     def __warning(self, message):
-        self.warningInfoBar(title="Flowchem Information", content=message)
+        self.warningInfoBar(title=f"{self.server_name} Information", content=message)
 
     @pyqtSlot(str)
     def __error(self, message):
-        self.errorInfoBar(title="Flowchem Information", content=message)
+        self.errorInfoBar(title=f"{self.server_name} Information", content=message)
 
     @pyqtSlot(str)
     def __message(self, message):
