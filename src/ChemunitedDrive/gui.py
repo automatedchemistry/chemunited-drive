@@ -59,6 +59,7 @@ from flowchem.utils import device_finder
 from flowchem.devices.list_known_device_type import (
     autodiscover_first_party as flowchem_devices_implemented,
 )
+from .core.dev_diagnosis import DeviceCards
 from .flowchem_thread import FlowchemThread
 from .utils import is_url_accessible, TEMPORARY_FILES_FOLDER
 from .frames import (
@@ -125,6 +126,7 @@ class DriveGUI(MSFluentWindow):
         self.link = HyperlinkLabel()
         self.confi_seg_window = SegmentWindow(parent=self)
         self.TextBrowserFile = TextBrowser(self)
+        self.DeviceCards = DeviceCards(self)
         self.progressBar = ProgressBar(self)
         self.buttonRun = PushButton("Run")
         self.buttonRun.clicked.connect(self.run)
@@ -259,11 +261,12 @@ class DriveGUI(MSFluentWindow):
             icon=FluentIcon.DEVELOPER_TOOLS,
         )
         self.confi_seg_window.addSubInterface(
-            widget=QWidget(),
+            widget=self.DeviceCards,
             text="Device added",
-            objectName="device_list",
+            objectName="DeviceCards",
             icon=FluentIcon.IOT,
         )
+        self.confi_seg_window.switchFrame.connect(self._switch_config_file)
         self.ConfigurationFileInterface.vBoxLayout.addWidget(widget)
         self.ConfigurationFileInterface.vBoxLayout.addWidget(self.labelMessage)
         self.ConfigurationFileInterface.vBoxLayout.addWidget(self.link)
@@ -285,6 +288,10 @@ class DriveGUI(MSFluentWindow):
 
         # Settings
         self.SettingsInterface.vBoxLayout.insertWidget(0, self.button_virtual_mode)
+
+    def _switch_config_file(self, window: str):
+        if window == "DeviceCards":
+            self.DeviceCards.update_cards()
 
     def _initialize_attributes(self):
         """Initialize internal attributes."""

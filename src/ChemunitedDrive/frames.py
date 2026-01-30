@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget
 from qframelesswindow import FramelessDialog
 from PyQt5.QtGui import QDesktopServices
-from PyQt5.QtCore import QUrl, Qt
+from PyQt5.QtCore import QUrl, Qt, pyqtSignal
 from typing import Any
 
 from qfluentwidgets import (
@@ -109,6 +109,7 @@ class MessageBoxRequestIP(FramelessDialog):
 
 
 class SegmentWindow(QWidget):
+    switchFrame = pyqtSignal(str)
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -132,8 +133,9 @@ class SegmentWindow(QWidget):
         self.stackedWidget.addWidget(widget)
         self.pivot.addItem(routeKey=objectName, text=text, icon=icon, onClick=onClick)
 
-    def switchTo(self, widget):
+    def switchTo(self, widget: QWidget):
         self.stackedWidget.setCurrentWidget(widget)
+        self.switchFrame.emit(widget.objectName())
 
 
 class FileCard(GroupHeaderCardWidget):
