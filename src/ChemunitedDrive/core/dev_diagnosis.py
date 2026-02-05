@@ -4,15 +4,11 @@ from typing import TYPE_CHECKING, Any
 import tomllib
 import tomli_w
 
-from ChemunitedDrive.flowchem_thread import FlowchemThread
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QWidget, QFrame, QVBoxLayout, QHBoxLayout, QLabel
+from PyQt5.QtCore import pyqtSlot, QTimer
+from PyQt5.QtWidgets import QWidget, QFrame
 
 from qfluentwidgets import (
     GroupHeaderCardWidget,
-    CaptionLabel,
-    StrongBodyLabel,
-    BodyLabel,
     PushButton,
     FluentIcon,
 )
@@ -21,6 +17,9 @@ from .device_card import DeviceCard, AssociationCard
 
 if TYPE_CHECKING:
     from ..gui import DriveGUI
+
+
+# adjust these to your real enum names
 
 
 def format_args_wrapped(args: dict, max_len: int = 60, sep: str = "  -  ") -> str:
@@ -53,22 +52,16 @@ class DeviceCards(GroupHeaderCardWidget):
         self.setTitle("Configuration files devices")
         self.setBorderRadius(8)
 
-        self.button_AddDevice = PushButton("Add New Device")
-        self.button_TestAll = PushButton("Test all device")
-        self.button_AddDevice.clicked.connect(self.add_device)
+        self.button_TestAll = PushButton(FluentIcon.CONNECT, "Test all devices")
         self.button_TestAll.clicked.connect(self.test_all_device)
-
-        widget = QWidget(self)
-        layout = QHBoxLayout(widget)
-        layout.addWidget(self.button_AddDevice)
-        layout.addWidget(self.button_TestAll)
-        self.vBoxLayout.addWidget(widget)
+        self.vBoxLayout.addWidget(self.button_TestAll)
 
         # Keep reference to each device card:
         # {device_name: {"args": dict, "widget": QWidget}}
         self.devices: dict[str, dict[str, Any]] = {}
 
         self.actual_device: str = ""
+        self._queue_test_device: list[str] = []
 
     # -------------------------
     # Public API
@@ -152,10 +145,6 @@ class DeviceCards(GroupHeaderCardWidget):
             self._parent.errorInfoBar(title="Config File", content=f"Invalid TOML: {e}")
             return {}
 
-    def add_device(self): ...
-
-    def test_all_device(self): ...
-
     def open_server_for_device(self, name: str):
         card: DeviceCard = self.devices[name]["card"]
         if card.server_indicator.state in [ServerState.OFF, ServerState.ERROR]:
@@ -202,10 +191,10 @@ class DeviceCards(GroupHeaderCardWidget):
 
     def start_server(self):
         if self.actual_device:
-            self.set_device_state(self.actual_device, ServerState.RUNNING)
             card: DeviceCard = self.devices[self.actual_device]["card"]
             card.run_server.setIcon(FluentIcon.CLOSE.icon())
             card.run_server.setToolTip("Stop")
+            self.set_device_state(self.actual_device, ServerState.RUNNING)
 
     def stop_server(self):
         if self.actual_device:
@@ -215,3 +204,53 @@ class DeviceCards(GroupHeaderCardWidget):
             card.run_server.setToolTip("Open the server")
             self.actual_device = ""
             self._parent.freezing_app(False)
+
+    def test_all_device(self):
+        if self._queue_test_device:
+            # Stop all tests
+            self._queue_test_device = []
+        else:
+            self._queue_test_device = list(self.devices.keys())
+            self._start_next()
+            self.button_TestAll.setIcon(FluentIcon.CLOSE.icon())
+            self.button_TestAll.setText("Stop tests")
+
+    def _start_next(self):
+        card: DeviceCard
+        if not self._queue_test_device:
+            # optionally emit "finished" signal here
+            self.button_TestAll.setIcon(FluentIcon.CONNECT.icon())
+            self.button_TestAll.setText("Test all devices")
+            # Disconnect all
+            for dev in self.devices.values():
+                card = dev["card"]
+                try:
+                    card.server_indicator.stateChanged.connect(self._on_state_changed)
+                except Exception:
+                    pass
+            self._parent.createSuccessInfoBar(
+                title="Connectivity test complete",
+                content="All devices have been successfully tested.",
+            )
+            return
+
+        device = self._queue_test_device.pop(0)
+        card = self.devices[device]["card"]
+        # connect once per card run (disconnect when done)
+        card.server_indicator.stateChanged.connect(self._on_state_changed)
+        # kick it off
+        self.open_server_for_device(name=device)
+
+    @pyqtSlot(object)  # or int, depending on your signal
+    def _on_state_changed(self, state: ServerState):
+        print(state.name, self.actual_device)
+        if state == ServerState.STARTING:
+            return
+        if state == ServerState.RUNNING:
+            # Stop the process
+            QTimer.singleShot(
+                1000, self.devices[self.actual_device]["card"]._on_startup
+            )
+            return
+
+        QTimer.singleShot(1000, self._start_next)

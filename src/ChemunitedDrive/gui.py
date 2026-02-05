@@ -23,6 +23,8 @@ Dependencies:
     - os
 """
 
+from functools import partial
+
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (
     QListWidgetItem,
@@ -61,7 +63,7 @@ from flowchem.devices.list_known_device_type import (
 )
 from .core.dev_diagnosis import DeviceCards
 from .flowchem_thread import FlowchemThread
-from .utils import is_url_accessible, TEMPORARY_FILES_FOLDER
+from .utils import is_url_accessible, TEMPORARY_FILES_FOLDER, method_params_dict
 from .frames import (
     MessageBoxCustom,
     LoggingInterface,
@@ -85,6 +87,7 @@ from pathlib import Path
 import inspect
 import traceback
 import toml
+import tomli_w
 import re
 import os
 
@@ -185,6 +188,10 @@ class DriveGUI(MSFluentWindow):
                 PrimaryPushButton:pressed {
                     background-color: #C50F1F;
                 }
+                PrimaryPushButton:disabled {
+                    background-color: #EF9A9A;
+                    color: #9E9E9E;
+                }
             """
         )
 
@@ -215,7 +222,7 @@ class DriveGUI(MSFluentWindow):
         self.addSubInterface(
             self.AutoDiscoverInterface,
             FluentIcon.SEARCH,
-            "Discover",
+            "Discover\nand Add",
             FluentIcon.SEARCH,
             isTransparent=True,
         )
@@ -287,7 +294,9 @@ class DriveGUI(MSFluentWindow):
         self._fill_project_cards()
 
         # Settings
-        self.SettingsInterface.vBoxLayout.insertWidget(0, self.button_virtual_mode)
+        self.SettingsInterface.vBoxLayout.addWidget(
+            self.button_virtual_mode, Qt.AlignTop  # type:ignore[attr-defined]
+        )
 
     def _switch_config_file(self, window: str):
         if window == "DeviceCards":
@@ -313,8 +322,6 @@ class DriveGUI(MSFluentWindow):
 
     @pyqtSlot()
     def __start_process(self):
-        if self.DeviceCards.actual_device:
-            self.DeviceCards.start_server()
         try:
             # Try loading the configuration file
             self.configuration = toml.load(self.temporary)
@@ -341,6 +348,8 @@ class DriveGUI(MSFluentWindow):
         self.progress_value = 100
         self.progressBar.setValue(self.progress_value)
         self.progressBar.setCustomBarColor(light="#7CB342", dark="#7CB342")
+        if self.DeviceCards.actual_device:
+            self.DeviceCards.start_server()
 
     def update_text(self):
         """
@@ -549,9 +558,9 @@ class DriveGUI(MSFluentWindow):
         else:
             # Inform user finder not available
             content = f"""
-                Finder function for {self._itemClickedDevicesList} is not implemented,
-                due to complexity or safety concerns.
-                You can manually create configuration files using the documentation:
+                Finder function for {self._itemClickedDevicesList} is not supported for this device.
+                You can create the configuration manually using the button below. For more details,
+                please go to the documentation link:
             """
 
             link = HyperlinkLabel(
@@ -561,6 +570,10 @@ class DriveGUI(MSFluentWindow):
                 "Documentation",
                 self,
             )
+            btn_add = PushButton(FluentIcon.ADD, "Add manually")
+            btn_add.clicked.connect(
+                partial(self.onCliclkManuallyAdd, self._itemClickedDevicesList)
+            )
 
             w = InfoBar(
                 icon=InfoBarIcon.INFORMATION,
@@ -569,10 +582,11 @@ class DriveGUI(MSFluentWindow):
                 orient=Qt.Vertical,  # type: ignore[attr-defined]
                 isClosable=True,
                 position=InfoBarPosition.TOP_RIGHT,
-                duration=3000,
+                duration=-1,
                 parent=self,
             )
             w.addWidget(link)
+            w.addWidget(btn_add)
             w.show()
 
             self.component_finder = None
@@ -584,14 +598,47 @@ class DriveGUI(MSFluentWindow):
         """
         view = CommandBarView(self)
 
-        action = Action(FluentIcon.SEARCH_MIRROR, "Finder")
-        action.triggered.connect(self.onClickedFinder)  # Connect to discovery handler
-        view.addAction(action)
+        action_finder = Action(FluentIcon.SEARCH_MIRROR, "Finder")
+        action_finder.triggered.connect(
+            self.onClickedFinder
+        )  # Connect to discovery handler
+        action_add_manually = Action(FluentIcon.ADD, "Add manually")
+        action_add_manually.triggered.connect(
+            partial(self.onCliclkManuallyAdd, self._itemClickedDevicesList)
+        )  # Connect to add handler
+        view.addAction(action_finder)
+        view.addAction(action_add_manually)
         view.resizeToSuitableWidth()
 
         Flyout.make(view, self.AutoDiscoverInterface, self, FlyoutAnimationType.FADE_IN)
 
-    def onClickFinder(self):
+    def onCliclkManuallyAdd(self, device: str):
+        device_obj = flowchem_devices_implemented()[device]
+        if hasattr(device_obj, "from_config"):
+            sig = method_params_dict(device_obj, "from_config")
+        else:
+            sig = method_params_dict(device_obj, "__init__")
+
+        block: dict[str, Any] = {"device": {"CustomName": {}}}
+        for key, options in sig.items():
+            if (
+                key in "self name kwargs".split()
+                or options["kind"] != "POSITIONAL_OR_KEYWORD"
+            ):
+                continue
+            block["device"]["CustomName"][key] = (
+                options["default"] if options["default"] else ""
+            )
+
+        toml_text = tomli_w.dumps(block)
+        self.TextBrowserFile.append("\n")
+        self.TextBrowserFile.append(toml_text)
+        self.createSuccessInfoBar(
+            title=f"{device} added",
+            content=f"The configuration block for device '{device}' was successfully added to the configuration file.",
+        )
+
+    def onClickedFinder(self):
         if self._running:
             self.warningInfoBar(
                 title="Process is running",

@@ -164,6 +164,8 @@ class FlowchemThread(QObject):
             self.processStart.emit()
         if "AssertionError" in infor:
             self.error.emit(f"AssertionError: {infor.split('AssertionError')[-1]}")
+        if "raise" in infor:
+            self.error.emit(f"Error: {infor.split('raise')[-1]}")
 
     def __on_state_changed(self, state):
         """Log and emit when the process state changes (NotRunning, Starting, Running)."""

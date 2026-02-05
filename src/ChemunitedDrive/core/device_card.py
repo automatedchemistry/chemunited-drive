@@ -1,18 +1,8 @@
-from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import (
-    QFrame,
-    QHBoxLayout,
-    QVBoxLayout,
-    QWidget,
-    QSizePolicy,
-    QAction,
-)
+from PyQt5.QtWidgets import QFrame, QHBoxLayout, QVBoxLayout, QWidget, QSizePolicy
 from PyQt5.QtCore import Qt, pyqtSignal
 from qfluentwidgets import (
     BodyLabel,
     CaptionLabel,
-    PushButton,
-    ToolButton,
     FluentIcon,
     TransparentToolButton,
     IconWidget,

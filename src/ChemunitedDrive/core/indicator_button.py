@@ -22,6 +22,7 @@ class ServerIndicator(QWidget):
     """A small circular indicator with a pulsing halo to show server state."""
 
     clicked = pyqtSignal()
+    stateChanged = pyqtSignal(object)
 
     def __init__(self, parent=None, diameter: int = 16):
         super().__init__(parent)
@@ -55,7 +56,6 @@ class ServerIndicator(QWidget):
         super().mousePressEvent(e)
 
     def set_state(self, state: ServerState):
-        self._state = state
 
         if state == ServerState.OFF:
             self._dot_color = QColor("#9aa0a6")  # gray
@@ -63,43 +63,38 @@ class ServerIndicator(QWidget):
             self._halo_enabled = False
             self._anim.stop()
             self.update()
-            return
-
-        if state == ServerState.STARTING:
+        elif state == ServerState.STARTING:
             # Green dot + yellow pulsing halo (your annotation)
             self._dot_color = QColor("#2ecc71")  # green
             self._halo_color = QColor("#f1c40f")  # yellow
             self._halo_enabled = True
             self._anim.start()
             self.update()
-            return
-
-        if state == ServerState.RUNNING:
+        elif state == ServerState.RUNNING:
             # Green dot + green pulsing halo (your annotation)
             self._dot_color = QColor("#2ecc71")
             self._halo_color = QColor("#2ecc71")
             self._halo_enabled = True
             self._anim.start()
             self.update()
-            return
-
-        if state == ServerState.ERROR:
+        elif state == ServerState.ERROR:
             # Red dot + red pulsing halo
             self._dot_color = QColor("#e74c3c")
             self._halo_color = QColor("#e74c3c")
             self._halo_enabled = True
             self._anim.start()
             self.update()
-            return
-
-        if state == ServerState.NORMAL:
+        elif state == ServerState.NORMAL:
             # Red dot + red pulsing halo
             self._dot_color = QColor("#54a958")
             self._halo_color = QColor("#54a958")
             self._halo_enabled = False
             self._anim.stop()
             self.update()
-            return
+
+        if self._state != state:
+            self.stateChanged.emit(state)
+        self._state = state
 
     def paintEvent(self, event):
         d = self._diameter
