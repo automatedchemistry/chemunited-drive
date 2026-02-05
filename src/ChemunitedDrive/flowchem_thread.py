@@ -96,7 +96,6 @@ class FlowchemThread(QObject):
         """
         if self.process.state() != QProcess.Running:  # type:ignore[attr-defined]
             self.__export_text("Process was not running.")
-            self.processStopped.emit()
             return
 
         self.warning.emit("Attempting to stop the process gracefully...")
@@ -120,8 +119,6 @@ class FlowchemThread(QObject):
         except Exception as e:
             self.error.emit(f"Error during process termination: {e}")
             self.__export_text(f"Termination error: {e}")
-        finally:
-            self.processStopped.emit()
 
     def terminate_existing_process(self):
         """
@@ -183,7 +180,6 @@ class FlowchemThread(QObject):
             self.__export_text(f"Process finished with exit code {exitCode}")
         else:
             self.__export_text(f"Process crashed with exit code {exitCode}")
-
         self.processStopped.emit()
 
     def __on_process_error(self, error):

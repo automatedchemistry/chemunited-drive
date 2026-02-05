@@ -2,14 +2,45 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 import tomllib
+import tomli_w
 
+from ChemunitedDrive.flowchem_thread import FlowchemThread
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QWidget, QFrame, QVBoxLayout, QHBoxLayout, QLabel
 
-from qfluentwidgets import GroupHeaderCardWidget, CaptionLabel, StrongBodyLabel, BodyLabel
+from qfluentwidgets import (
+    GroupHeaderCardWidget,
+    CaptionLabel,
+    StrongBodyLabel,
+    BodyLabel,
+    PushButton,
+    FluentIcon,
+)
+from .indicator_button import ServerState
+from .device_card import DeviceCard, AssociationCard
 
 if TYPE_CHECKING:
     from ..gui import DriveGUI
+
+
+def format_args_wrapped(args: dict, max_len: int = 60, sep: str = "  -  ") -> str:
+    parts = [f"{k}={v}" for k, v in args.items()]
+    lines = []
+    cur = ""
+
+    for p in parts:
+        candidate = p if not cur else cur + sep + p
+        if len(candidate) <= max_len:
+            cur = candidate
+        else:
+            if cur:
+                lines.append(cur)
+            cur = p  # start new line with this item
+
+    if cur:
+        lines.append(cur)
+
+    return "\n".join(lines)
 
 
 class DeviceCards(GroupHeaderCardWidget):
@@ -22,9 +53,22 @@ class DeviceCards(GroupHeaderCardWidget):
         self.setTitle("Configuration files devices")
         self.setBorderRadius(8)
 
+        self.button_AddDevice = PushButton("Add New Device")
+        self.button_TestAll = PushButton("Test all device")
+        self.button_AddDevice.clicked.connect(self.add_device)
+        self.button_TestAll.clicked.connect(self.test_all_device)
+
+        widget = QWidget(self)
+        layout = QHBoxLayout(widget)
+        layout.addWidget(self.button_AddDevice)
+        layout.addWidget(self.button_TestAll)
+        self.vBoxLayout.addWidget(widget)
+
         # Keep reference to each device card:
         # {device_name: {"args": dict, "widget": QWidget}}
         self.devices: dict[str, dict[str, Any]] = {}
+
+        self.actual_device: str = ""
 
     # -------------------------
     # Public API
@@ -37,15 +81,17 @@ class DeviceCards(GroupHeaderCardWidget):
             # If your TOML has a different shape, you can adapt here
             self._parent.errorInfoBar(
                 title="Config File",
-                content="TOML: 'device' must be a table/dict like: [device] name = {...}"
+                content="TOML: 'device' must be a table/dict like: [device] name = {...}",
             )
             self.clear_cards()
             return
 
         # Rebuild UI
         self.clear_cards()
-
+        content = ""
         for name, args in devices.items():
+            if isinstance(args, dict):
+                content = format_args_wrapped(args, max_len=30)
             # args is typically a dict with device parameters
             if args is None:
                 args = {}
@@ -53,14 +99,34 @@ class DeviceCards(GroupHeaderCardWidget):
                 # If someone put a scalar under device.<name>, normalize
                 args = {"value": args}
 
-            card = self._build_device_card(name, args)
+            card = DeviceCard.build_card(parent=self, name=name)
+            # connect card requests to your GUI
+            card.requestStartup.connect(
+                self.open_server_for_device
+            )  # implement in DriveGUI
+            # Association
+            card_assoociation = AssociationCard(
+                parent=self,
+                device_name=name,
+                association=data.get("association", {}),
+            )
+
             group = self.addGroup(
                 ":/ChemunitedDrive/chemunited.svg",
                 name,
-                "content",
-                widget=card,
+                content,
+                widget=card_assoociation,
             )
-            self.devices[name] = {"args": args, "widget": group}
+            # vertical line
+            line = QFrame(self)
+            line.setFrameShape(QFrame.VLine)
+            line.setFrameShadow(QFrame.Sunken)
+            line.setFixedWidth(1)  # important
+            line.setStyleSheet("background: #d0d0d0;")  # optional (color)
+            group.addWidget(line)
+            group.addWidget(card)
+
+            self.devices[name] = {"data": devices[name], "widget": group, "card": card}
 
     def clear_cards(self) -> None:
         """Remove and delete all device card widgets."""
@@ -83,68 +149,69 @@ class DeviceCards(GroupHeaderCardWidget):
             return tomllib.loads(text)
         except Exception as e:
             # Replace with InfoBar / MessageBox in your GUI if you want
-            self._parent.errorInfoBar(
-                title="Config File",
-                content=f"Invalid TOML: {e}"
-            )
+            self._parent.errorInfoBar(title="Config File", content=f"Invalid TOML: {e}")
             return {}
 
-    def _build_device_card(self, name: str, args: dict) -> QWidget:
-        """Create one card widget showing a device name and key/value args."""
-        card = QFrame(self)
-        card.setObjectName("deviceCard")
-        card.setFrameShape(QFrame.NoFrame)
+    def add_device(self): ...
 
-        # Layout
-        root = QVBoxLayout(card)
-        root.setContentsMargins(12, 10, 12, 10)
-        root.setSpacing(6)
+    def test_all_device(self): ...
 
-        # Header row
-        header = QHBoxLayout()
-        header.setSpacing(10)
+    def open_server_for_device(self, name: str):
+        card: DeviceCard = self.devices[name]["card"]
+        if card.server_indicator.state in [ServerState.OFF, ServerState.ERROR]:
 
-        title = StrongBodyLabel(name, card)
-        title.setTextInteractionFlags(Qt.TextSelectableByMouse)
+            if self._parent.flowchemThread.is_running():
+                self._parent.warningInfoBar(
+                    title="",
+                    content="You can only diagnose the device if the server is not running."
+                    " Please close the server application before proceeding.",
+                    duration=4000,
+                )
+                return
 
-        # Optional: show a "type" field if present
-        dev_type = args.get("type") or args.get("kind") or args.get("driver")
-        subtitle = CaptionLabel(str(dev_type) if dev_type is not None else "", card)
-        subtitle.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        subtitle.setVisible(bool(subtitle.text().strip()))
+            self.actual_device = name
+            self._parent.freezing_app(True)
+            self.set_device_state(name, ServerState.STARTING)
 
-        header.addWidget(title, 1)
-        header.addWidget(subtitle, 0, Qt.AlignRight)
+            # Insert the device block to run the server and test it isolated
+            complete_text = self._parent.TextBrowserFile.toPlainText()
+            self._parent.TextBrowserFile.clear()
+            toml_text = tomli_w.dumps({"device": {name: self.devices[name]["data"]}})
+            self._parent.TextBrowserFile.setText(toml_text)
+            # Run the server
+            self._parent.run(ignore_dialog=True)
+            # Retrieve the previous file content
+            self._parent.TextBrowserFile.clear()
+            self._parent.TextBrowserFile.setText(complete_text)
+        elif card.server_indicator.state == ServerState.RUNNING:
+            # Open the server
+            card = self.devices[self.actual_device]["card"]
+            card.run_server.setIcon(FluentIcon.PLAY.icon())
+            card.run_server.setToolTip("Open the server")
+            self.actual_device = ""
+            self._parent.stop(ignore_dialog=True)
+            self.set_device_state(name, ServerState.NORMAL)
+            self._parent.freezing_app(False)
 
-        root.addLayout(header)
+    def set_device_state(self, name: str, state: ServerState):
+        card: DeviceCard = self.devices[name]["card"]
+        color = state.value.split()[0]
+        card.set_server_state(state)
+        card.status_label.setText(state.value[len(color) :])
+        card.status_label.setStyleSheet(f"color: {color};")
 
-        # Body: show parameters (excluding the type-like key if you want)
-        params_layout = QVBoxLayout()
-        params_layout.setSpacing(2)
+    def start_server(self):
+        if self.actual_device:
+            self.set_device_state(self.actual_device, ServerState.RUNNING)
+            card: DeviceCard = self.devices[self.actual_device]["card"]
+            card.run_server.setIcon(FluentIcon.CLOSE.icon())
+            card.run_server.setToolTip("Stop")
 
-        hidden_keys = {"type", "kind", "driver"}
-        shown = 0
-
-        for k, v in args.items():
-            if k in hidden_keys:
-                continue
-            line = BodyLabel(f"{k}: {v}", card)
-            line.setTextInteractionFlags(Qt.TextSelectableByMouse)
-            params_layout.addWidget(line)
-            shown += 1
-
-        if shown == 0:
-            params_layout.addWidget(BodyLabel("No parameters.", card))
-
-        root.addLayout(params_layout)
-
-        # Simple "card" styling (works well with QFluent theme)
-        card.setStyleSheet("""
-            QFrame#deviceCard {
-                border: 1px solid rgba(120, 120, 120, 60);
-                border-radius: 8px;
-                background: rgba(255, 255, 255, 6);
-            }
-        """)
-
-        return card
+    def stop_server(self):
+        if self.actual_device:
+            self.set_device_state(self.actual_device, ServerState.ERROR)
+            card: DeviceCard = self.devices[self.actual_device]["card"]
+            card.run_server.setIcon(FluentIcon.PLAY.icon())
+            card.run_server.setToolTip("Open the server")
+            self.actual_device = ""
+            self._parent.freezing_app(False)

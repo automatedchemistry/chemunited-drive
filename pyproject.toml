@@ -27,7 +27,8 @@ dependencies = [
     "appdirs",
     "appdirs",
     "toml",
-    "black"
+    "black",
+    "tomli-w"
 ]
 
 [project.optional-dependencies]

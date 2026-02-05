@@ -308,11 +308,13 @@ class DriveGUI(MSFluentWindow):
         self.flowchemThread.warning.connect(self.__warning)
         self.flowchemThread.error.connect(self.__error)
         self.flowchemThread.messageEmitted.connect(self.__message)
-        self.flowchemThread.processStart.connect(self.show_url)
+        self.flowchemThread.processStart.connect(self.__start_process)
         self.flowchemThread.processStopped.connect(self.__finalize_process)
 
     @pyqtSlot()
-    def show_url(self):
+    def __start_process(self):
+        if self.DeviceCards.actual_device:
+            self.DeviceCards.start_server()
         try:
             # Try loading the configuration file
             self.configuration = toml.load(self.temporary)
@@ -417,7 +419,7 @@ class DriveGUI(MSFluentWindow):
                 content=f"An error occurred while saving the file: {str(e)}",
             )
 
-    def run(self):
+    def run(self, ignore_dialog: bool = False):
         """
         Execute the FlowChem run sequence.
 
@@ -443,14 +445,15 @@ class DriveGUI(MSFluentWindow):
             return
 
         # Ask user whether to terminate running FlowChem processes
-        content = f"""
-        Do you want to check for any running <b>{self.server_name}</b> processes on this machine
-        and terminate them before starting a new one?
-        """
-
-        w = MessageBoxCustom("", content, self)
-
-        if w.exec():
+        if not ignore_dialog:
+            content = f"""
+            Do you want to check for any running <b>{self.server_name}</b> processes on this machine
+            and terminate them before starting a new one?
+            """
+            w = MessageBoxCustom("", content, self)
+            if w.exec():
+                self.flowchemThread.terminate_existing_process()
+        else:
             self.flowchemThread.terminate_existing_process()
 
         self.progressBar.setCustomBarColor(light="#90CAF9", dark="#90CAF9")
@@ -462,17 +465,18 @@ class DriveGUI(MSFluentWindow):
             config_file=self.temporary, virtual_mode=self.VirtualMode
         )
 
-    def stop(self):
-        content = """
-                    Are you sure you want to stop the server?
-                    Any running FlowChem processes will be terminated.
-                """
+    def stop(self, ignore_dialog: bool = False):
+        if not ignore_dialog:
+            content = """
+                        Are you sure you want to stop the server?
+                        Any running FlowChem processes will be terminated.
+                    """
+            w = Dialog("Close Server", content, self)
+            if not w.exec():
+                return
 
-        w = Dialog("Close Server", content, self)
-
-        if w.exec():
-            if self.flowchemThread.process.state() == QProcess.Running:  # type: ignore[attr-defined]
-                self.flowchemThread.stop_process()
+        if self.flowchemThread.process.state() == QProcess.Running:  # type: ignore[attr-defined]
+            self.flowchemThread.stop_process()
 
     def _fillUp_list(self):
         """
@@ -711,11 +715,26 @@ class DriveGUI(MSFluentWindow):
         if self.progress_value >= count:
             self.progressTimer.stop()
 
+    def freezing_app(self, value: bool):
+        self.navigationInterface.setEnabled(not value)
+        self.buttonRun.setEnabled(not value)
+        self.TextBrowserFile.setEnabled(not value)
+        self.update_file_btn.setEnabled(not value)
+        self.buttonClose.setEnabled(not value)
+        self.confi_seg_window.pivot.setEnabled(not value)
+
     @pyqtSlot()
     def __finalize_process(self):
-        self.createSuccessInfoBar(
-            title="Server Close", content="Server was close successfully"
-        )
+        self.DeviceCards.stop_server()
+        if self.buttonRun.isHidden():
+            self.createSuccessInfoBar(
+                title="Server Close", content="Server was close successfully"
+            )
+        else:
+            self.errorInfoBar(
+                title="Server Stop",
+                content="Issue make the server stop (see detail in Logging)",
+            )
         self.link.setUrl("")
         self.link.setText("")
         self.labelMessage.setText("No server running")
