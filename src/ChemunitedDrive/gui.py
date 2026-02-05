@@ -88,6 +88,8 @@ import inspect
 import traceback
 import toml
 import tomli_w
+from datetime import datetime
+from html import escape
 import re
 import os
 
@@ -253,8 +255,25 @@ class DriveGUI(MSFluentWindow):
         self.titleBar.raise_()
 
         # Add Logging Interface widgets
-        self.TextBrowser = TextBrowser(self)
-        self.LoggingInterface.vBoxLayout.addWidget(self.TextBrowser)
+        clear_button = PushButton(FluentIcon.DELETE, "Clear Loggings")
+        clear_button.clicked.connect(self._onClickedClearLoggings)
+        self.TextBrowserReport = TextBrowser(self)
+        self.TextBrowserLoggings = TextBrowser(self)
+        self.seg_log_window = SegmentWindow(self)
+        self.seg_log_window.addSubInterface(
+            widget=self.TextBrowserLoggings,
+            text="Chemunited-Drive Loggings",
+            objectName="TextBrowserLoggings",
+            icon=FluentIcon.CHAT,
+        )
+        self.seg_log_window.addSubInterface(
+            widget=self.TextBrowserReport,
+            text="Process intern reports",
+            objectName="TextBrowserReport",
+            icon=FluentIcon.ROBOT,
+        )
+        self.LoggingInterface.vBoxLayout.addWidget(self.seg_log_window)
+        self.LoggingInterface.vBoxLayout.addWidget(clear_button)
 
         # Configuration file with update button
         widget = QWidget()
@@ -709,8 +728,7 @@ class DriveGUI(MSFluentWindow):
             duration=duration,
             parent=self,
         )
-        self.TextBrowser.append(f"Logg - title: {title}, content: {content}")
-        self.TextBrowser.ensureCursorVisible()  # Scroll to the most recent lin
+        self._append_log("error", title, content)
 
     def createSuccessInfoBar(self, title: str, content: str, duration=2000):
         """
@@ -731,8 +749,7 @@ class DriveGUI(MSFluentWindow):
             duration=duration,
             parent=self,
         )
-        self.TextBrowser.append(f"Logg - title: {title}, content: {content}")
-        self.TextBrowser.ensureCursorVisible()  # Scroll to the most recent lin
+        self._append_log("success", title, content)
 
     def warningInfoBar(self, title: str, content: str, duration=2000):
         """
@@ -753,8 +770,7 @@ class DriveGUI(MSFluentWindow):
             duration=duration,
             parent=self,
         )
-        self.TextBrowser.append(f"Logg - title: {title}, content: {content}")
-        self.TextBrowser.ensureCursorVisible()  # Scroll to the most recent lin
+        self._append_log("warning", title, content)
 
     def update_progress(self, step=2, count=40):
         self.progress_value += 1
@@ -769,6 +785,54 @@ class DriveGUI(MSFluentWindow):
         self.update_file_btn.setEnabled(not value)
         self.buttonClose.setEnabled(not value)
         self.confi_seg_window.pivot.setEnabled(not value)
+
+    def _onClickedClearLoggings(self):
+        self.TextBrowserLoggings.clear()
+        self.TextBrowserReport.clear()
+
+    def _append_log(self, level: str, title: str, content: str):
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        styles = {
+            "error": {"bg": "#FDECEA", "fg": "#B71C1C", "badge": "#D32F2F"},
+            "warning": {"bg": "#FFF4E5", "fg": "#8D6E00", "badge": "#F9A825"},
+            "success": {"bg": "#E8F5E9", "fg": "#1B5E20", "badge": "#2E7D32"},
+            "info": {"bg": "#F3F4F6", "fg": "#111827", "badge": "#6B7280"},
+        }
+        s = styles.get(level, styles["info"])
+
+        title = escape(title)
+        content = escape(content).replace("\n", "<br>")
+
+        html = f"""
+        <div style="
+            margin:6px 0; padding:8px 10px; border-radius:8px;
+            background:{s['bg']}; color:{s['fg']};
+            border:1px solid rgba(0,0,0,0.08);
+            font-family:Segoe UI, Arial;">
+
+            <div style="display:flex; align-items:center; gap:8px;">
+                <span style="
+                    display:inline-block; padding:2px 8px; border-radius:999px;
+                    background:{s['badge']}; color:white; font-size:11px;
+                    font-weight:600;">
+                    {level.upper()}
+                </span>
+
+                <span style="font-size:11px; opacity:0.75;"> {ts}</span>
+
+                <span style="font-weight:600;">{title}</span>
+            </div>
+
+            <div style="margin-top:4px; font-size:12px; line-height:1.35;">
+                {content}
+            </div>
+        </div>
+        """
+
+        tb = self.TextBrowserLoggings
+        tb.append(html)
+        tb.ensureCursorVisible()
 
     @pyqtSlot()
     def __finalize_process(self):
@@ -809,8 +873,8 @@ class DriveGUI(MSFluentWindow):
 
     @pyqtSlot(str)
     def __message(self, message):
-        self.TextBrowser.append(message)
-        self.TextBrowser.ensureCursorVisible()  # Scroll to the most recent lin
+        self.TextBrowserReport.append(message)
+        self.TextBrowserReport.ensureCursorVisible()  # Scroll to the most recent lin
 
     def closeEvent(self, event):
         """

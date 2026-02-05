@@ -243,7 +243,6 @@ class DeviceCards(GroupHeaderCardWidget):
 
     @pyqtSlot(object)  # or int, depending on your signal
     def _on_state_changed(self, state: ServerState):
-        print(state.name, self.actual_device)
         if state == ServerState.STARTING:
             return
         if state == ServerState.RUNNING:

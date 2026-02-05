@@ -1,6 +1,5 @@
 from PyQt5.QtCore import QProcess, QObject, pyqtSignal
 from PyQt5.QtWidgets import QTextBrowser
-from datetime import datetime
 import psutil
 import sys
 
@@ -150,7 +149,7 @@ class FlowchemThread(QObject):
     def __on_ready_read_output(self):
         """Handle standard output from the FlowChem process and emit it as a message."""
         output = self.process.readAllStandardOutput().data().decode(errors="replace")
-        self.__export_text(f"Process report Output: {output}")
+        self.__export_text(f"Report Output: {output}")
 
     def __on_ready_read_reports(self):
         """
@@ -159,7 +158,7 @@ class FlowchemThread(QObject):
         Emits processStart when Uvicorn server reports it is ready.
         """
         infor = self.process.readAllStandardError().data().decode(errors="replace")
-        self.__export_text(f"Process report: {infor}")
+        self.__export_text(infor)
         if "Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)" in infor:
             self.processStart.emit()
         if "AssertionError" in infor:
@@ -186,9 +185,8 @@ class FlowchemThread(QObject):
 
     def __on_process_error(self, error):
         """Handle QProcess errors (e.g., failed to start, crashed)."""
-        self.__export_text(f"Process report Error occurred: {error}")
+        self.__export_text(f"Error occurred: {error}")
 
     def __export_text(self, text: str):
         """Format a log message with a timestamp and emit it via messageEmitted."""
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        self.messageEmitted.emit(f"[{timestamp}] {text}")
+        self.messageEmitted.emit(text)
