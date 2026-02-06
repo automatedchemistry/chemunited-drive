@@ -21,6 +21,7 @@ classifiers = [
 ]
 dependencies = [
     "PyQt-Fluent-Widgets",
+    "flowchem-virtual",
     "flowchem",
     "psutil",
     "jedi",
