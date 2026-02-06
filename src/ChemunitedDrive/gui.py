@@ -638,7 +638,7 @@ class DriveGUI(MSFluentWindow):
         else:
             sig = method_params_dict(device_obj, "__init__")
 
-        block: dict[str, Any] = {"device": {"CustomName": {}}}
+        block: dict[str, Any] = {"device": {"CustomName": {"type": device}}}
         for key, options in sig.items():
             if (
                 key in "self name kwargs".split()
@@ -700,7 +700,7 @@ class DriveGUI(MSFluentWindow):
 
         detailed_message = f"Type: {error_type}\nMessage: {error_message}\n\n"
 
-        self.errorInfoBar(title=title, content=detailed_message, duration=-1)
+        self.errorInfoBar(title=title, content=detailed_message, duration=10000)
 
     def errorInfoBar(
         self,
