@@ -2,9 +2,13 @@ from typing import Tuple, Any
 from appdirs import user_data_dir
 import requests
 import inspect
+import os
 
 
 TEMPORARY_FILES_FOLDER = user_data_dir("ChemUnited", "ChemUnited_Recent_Projects")
+
+if not os.path.isdir(TEMPORARY_FILES_FOLDER):
+    os.makedirs(TEMPORARY_FILES_FOLDER)
 
 
 def is_url_accessible(url: str, timeout=5) -> Tuple[bool, Any]:
