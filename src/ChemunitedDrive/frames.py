@@ -160,7 +160,10 @@ class FileCard(GroupHeaderCardWidget):
         btn_open = TransparentToolButton(FluentIcon.PLAY)
         if hasattr(self._parent, "load_project_config_file"):
             btn_open.clicked.connect(
-                partial(self._parent.load_project_config_file, file)
+                partial(
+                    self._parent.load_project_config_file,
+                    file.parent / "__configuration_file.toml",
+                )
             )
         btn_open.setToolTip("Open Project Configuration File")
 
@@ -185,6 +188,22 @@ class FileCard(GroupHeaderCardWidget):
     def __view_folder(self, file: Path):
         """Open the file in the OS default program"""
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(file)))
+
+
+class CustomFile(GroupHeaderCardWidget):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self._parent = parent
+        self.setTitle("Custom File")
+        self.setBorderRadius(8)
+
+        self.btn = PushButton(FluentIcon.DOCUMENT, "Load a custom file")
+        self.addGroup(
+            icon=FluentIcon.FONT,
+            title="Custom File",
+            content="Custom configuration file outside chemunited projects",
+            widget=self.btn,
+        )
 
 
 class BaseInterface(ScrollArea):

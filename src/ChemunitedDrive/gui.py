@@ -26,11 +26,7 @@ Dependencies:
 from functools import partial
 
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import (
-    QListWidgetItem,
-    QWidget,
-    QHBoxLayout,
-)
+from PyQt5.QtWidgets import QListWidgetItem, QWidget, QHBoxLayout, QFileDialog
 from PyQt5.QtCore import QUrl, Qt, QTimer, pyqtSlot, QProcess
 
 from qfluentwidgets import (
@@ -73,6 +69,7 @@ from .frames import (
     SettingsInterface,
     SegmentWindow,
     FileCard,
+    CustomFile,
 )
 
 # Python 3.11+: tomllib is built-in. For 3.10 or earlier: pip install tomli
@@ -138,6 +135,7 @@ class DriveGUI(MSFluentWindow):
         self.buttonClose = PrimaryPushButton("Stop")
         self.buttonClose.clicked.connect(self.stop)
         self.FileCard = FileCard(self)
+        self.CustomFile = CustomFile(self)
         self.button_virtual_mode = TransparentTogglePushButton(
             FluentIcon.CONNECT, "Virtual Mode", self
         )
@@ -306,6 +304,8 @@ class DriveGUI(MSFluentWindow):
         self.AutoDiscoverInterface.vBoxLayout.addWidget(self.listDeviceImplemented)
 
         # Add File Cards
+        self.ProjectCardsInterface.vBoxLayout.addWidget(self.CustomFile)
+        self.CustomFile.btn.clicked.connect(self._load_custom_file)
         self.ProjectCardsInterface.vBoxLayout.addWidget(self.FileCard)
 
         self._fillUp_list()
@@ -316,6 +316,14 @@ class DriveGUI(MSFluentWindow):
         self.SettingsInterface.vBoxLayout.addWidget(
             self.button_virtual_mode, Qt.AlignTop  # type:ignore[attr-defined]
         )
+
+    def _load_custom_file(self):
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "Open Configuration File", "", "TOML Files (*.toml)"
+        )
+
+        if file_path:
+            self.load_project_config_file(Path(file_path))
 
     def _switch_config_file(self, window: str):
         if window == "DeviceCards":
@@ -527,8 +535,7 @@ class DriveGUI(MSFluentWindow):
             for name, file in recent_dict.items():
                 self.FileCard.add_card(Path(file))
 
-    def load_project_config_file(self, file: Path):
-        conf = file.parent / "__configuration_file.toml"
+    def load_project_config_file(self, conf: Path):
         if conf.is_file():
             try:
                 # Load and store configuration
